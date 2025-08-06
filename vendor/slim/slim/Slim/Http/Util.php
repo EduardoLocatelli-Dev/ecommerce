@@ -55,14 +55,19 @@ class Util
      * @return array|string
      */
     public static function stripSlashesIfMagicQuotes($rawData, $overrideStripSlashes = null)
-    {
-        $strip = is_null($overrideStripSlashes) ? get_magic_quotes_gpc() : $overrideStripSlashes;
-        if ($strip) {
-            return self::_stripSlashes($rawData);
-        } else {
-            return $rawData;
-        }
+{
+    $strip = false; // Substitui completamente o uso de get_magic_quotes_gpc()
+
+    if (!is_null($overrideStripSlashes)) {
+        $strip = $overrideStripSlashes;
     }
+    if ($strip) {
+        return self::_stripSlashes($rawData);
+    } else {
+        return $rawData;
+    }
+}
+
 
     /**
      * Strip slashes from string or array
