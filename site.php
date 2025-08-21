@@ -148,13 +148,34 @@ $app->get("/checkout", function(){
 
 	$cart = Cart::getFromSession();
 
-	$address = new Address();
+	$address = [
+	    "desaddress" => "",
+	    "descomplement" => "",
+	    "desdistrict" => "",
+	    "descity" => "",
+	    "desstate" => "",
+	    "descountry" => "",
+	    "deszipcode" => ""
+	];
+
+	// Se usuário estiver logado, sobrescreve os valores
+	$cartUser = User::getFromSession();
+	if ($cartUser->getiduser() > 0) {
+	    $values = $cartUser->getValues();
+	    $address["desaddress"] = $values["desaddress"] ?? "";
+	    $address["descomplement"] = $values["descomplement"] ?? "";
+	    $address["desdistrict"] = $values["desdistrict"] ?? "";
+	    $address["descity"] = $values["descity"] ?? "";
+	    $address["desstate"] = $values["desstate"] ?? "";
+	    $address["descountry"] = $values["descountry"] ?? "";
+	    $address["deszipcode"] = $values["deszipcode"] ?? "";
+	}
 
 	$page = new Page();
 
 	$page->setTpl("checkout", [
 		'cart'=>$cart->getValues(),
-		'address'=>$address->getValues()
+		'address'=>$address
 	]);
 
 });
@@ -250,6 +271,66 @@ $app->post("/register", function(){
 
 	header("Location: /checkout");
 	exit;
+
+});
+
+$app->get("/forgot", function() {
+
+	$page = new Page();
+
+	$page->setTpl("forgot");
+
+});
+
+$app->post("/forgot", function() {
+
+	$user = User::getForgot($_POST["email"]);
+
+	header("Location: /forgot/sent");
+	exit;
+
+});
+
+$app->get("/forgot/sent", function(){
+
+	$page = new Page();
+
+	$page->setTpl("forgot-sent");
+
+});
+
+$app->get("/forgot/reset", function (){
+
+	$user = User::validForgotDecrypt($_GET["code"]);
+
+	$page = new Page();
+
+	$page->setTpl("forgot-reset", array(
+		"name"=>$user["desperson"],
+		"code"=>$_GET["code"]
+	));
+
+});
+
+$app->post("/forgot/reset", function(){
+
+	$forgot = User::validForgotDecrypt($_POST["code"]);
+
+	User::setForgotUsed($forgot["idrecovery"]);
+
+	$user = new User();
+
+	$user->get((int)$forgot["iduser"]);
+
+	$password = password_hash($_POST["password"], PASSWORD_DEFAULT, [
+		"cost"=>12
+	]);
+
+	$user->setPassword($password);
+
+	$page = new Page();
+
+	$page->setTpl("forgot-reset-success");
 
 });
 
