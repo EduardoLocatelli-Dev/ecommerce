@@ -10,6 +10,8 @@ class User extends Model{
 
     const SESSION = "User";
     const SECRET = "HcodePhp7_Secret";
+    const ERROR = "UserError";
+    const ERROR_REGISTER = "UserErrorRegister";
 
     public static function getFromSession()
     {
@@ -317,10 +319,7 @@ class User extends Model{
         ));
 
     }
-
-    const ERROR = "UserError";
-    const ERROR_REGISTER = "UserErrorRegister";
-
+    
     public static function setError($msg)
     {
         $_SESSION[User::ERROR] = $msg;
