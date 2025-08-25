@@ -142,43 +142,132 @@ $app->post("/cart/freight", function() {
 
 });
 
-$app->get("/checkout", function(){
+// GET /checkout → exibe a página de checkout
+$app->get("/checkout", function() {
 
-	User::verifyLogin(false);
+    User::verifyLogin(false);
 
-	$cart = Cart::getFromSession();
+    $address = new Address();
+    $cart = Cart::getFromSession();
 
-	$address = [
-	    "desaddress" => "",
-	    "descomplement" => "",
-	    "desdistrict" => "",
-	    "descity" => "",
-	    "desstate" => "",
-	    "descountry" => "",
-	    "deszipcode" => ""
-	];
+    if (isset($_GET['zipcode'])) {
+        // limpa o CEP para só números
+        $zip = preg_replace('/\D/', '', $_GET['zipcode']);
 
-	// Se usuário estiver logado, sobrescreve os valores
-	$cartUser = User::getFromSession();
-	if ($cartUser->getiduser() > 0) {
-	    $values = $cartUser->getValues();
-	    $address["desaddress"] = $values["desaddress"] ?? "";
-	    $address["descomplement"] = $values["descomplement"] ?? "";
-	    $address["desdistrict"] = $values["desdistrict"] ?? "";
-	    $address["descity"] = $values["descity"] ?? "";
-	    $address["desstate"] = $values["desstate"] ?? "";
-	    $address["descountry"] = $values["descountry"] ?? "";
-	    $address["deszipcode"] = $values["deszipcode"] ?? "";
-	}
+        // carrega endereço pelo CEP
+        $address->loadFromCEP($zip);
 
-	$page = new Page();
+        // atualiza o carrinho com o CEP
+        $cart->setdeszipcode($zip);
 
-	$page->setTpl("checkout", [
-		'cart'=>$cart->getValues(),
-		'address'=>$address
-	]);
+        // calcula frete/total (use setFreight se existir no seu Cart)
+        if (method_exists($cart, 'setFreight')) {
+            $cart->setFreight($zip);
+        } else {
+            $cart->getCalculateTotal();
+        }
+
+        $cart->save();
+    }
+
+    // Base: valores vindos do objeto Address (ou vazio se não veio nada)
+    $values = $address->getValues();
+    $addressData = [
+        "desaddress"    => $values["desaddress"]    ?? "",
+        "descomplement" => $values["descomplement"] ?? "",
+        "desdistrict"   => $values["desdistrict"]   ?? "",
+        "descity"       => $values["descity"]       ?? "",
+        "desstate"      => $values["desstate"]      ?? "",
+        "descountry"    => $values["descountry"]    ?? "",
+        "deszipcode"    => $values["deszipcode"]    ?? ""
+    ];
+
+    // Se usuário estiver logado, sobrescreve os campos que ele tiver cadastrado
+    $user = User::getFromSession();
+    if ($user->getiduser() > 0) {
+        $u = $user->getValues();
+        foreach (["desaddress","descomplement","desdistrict","descity","desstate","descountry","deszipcode"] as $k) {
+            if (!empty($u[$k])) {
+                $addressData[$k] = $u[$k];
+            }
+        }
+    }
+
+	if (!$address->getdesaddress()) $address->setdesaddress('');
+	if (!$address->getdescomplement()) $address->setdescomplement('');
+	if (!$address->getdesdistrict()) $address->setdesdistrict('');
+	if (!$address->getdescity()) $address->setdescity('');
+	if (!$address->getdesstate()) $address->setdesstate('');
+	if (!$address->getdescountry()) $address->setdescountry('');
+	if (!$address->getdeszipcode()) $address->setdeszipcode('');
+
+    $page = new Page();
+
+    $page->setTpl("checkout", [
+        'cart'    => $cart->getValues(),
+		'products' => $cart->getProducts(),
+        'address' => $addressData,
+		'error' => Address::getMsgError()
+    ]);
 
 });
+
+// POST /checkout → processa envio do formulário
+$app->post("/checkout", function() {
+
+    User::verifyLogin(false);
+
+	if (!isset($_POST['zipcode']) || $_POST['zipcode'] === '') {
+		Address::setMsgError("Informe o CEP.");
+		header("Location: /checkout");
+		exit;
+	}
+
+	if (!isset($_POST['desaddress']) || $_POST['desaddress'] === '') {
+		Address::setMsgError("Informe o endereço.");
+		header("Location: /checkout");
+		exit;
+	}
+
+	if (!isset($_POST['desdistrict']) || $_POST['desdistrict'] === '') {
+		Address::setMsgError("Informe o bairro.");
+		header("Location: /checkout");
+		exit;
+	}
+
+	if (!isset($_POST['descity']) || $_POST['descity'] === '') {
+		Address::setMsgError("Informe a cidade.");
+		header("Location: /checkout");
+		exit;
+	}
+
+	if (!isset($_POST['desstate']) || $_POST['desstate'] === '') {
+		Address::setMsgError("Informe o estado.");
+		header("Location: /checkout");
+		exit;
+	}
+
+	if (!isset($_POST['descountry']) || $_POST['descountry'] === '') {
+		Address::setMsgError("Informe o país.");
+		header("Location: /checkout");
+		exit;
+	}
+
+	$user = User::getFromSession();
+
+	$address = new Address();
+
+	$_POST['deszipcode'] =  $_POST['zipcode'];
+	$_POST['idperson'] = $user->getidperson();
+
+	$address->setData($_POST);
+
+	$address->save();
+
+    header("Location: /order");
+    exit;
+});
+
 
 $app->get("/login", function(){
 
@@ -388,7 +477,7 @@ $app->post("/profile", function(){
 
 	$user->setData($_POST);
 
-	$user->save();
+	$user->update();
 
 	User::setSuccess("Dados alterados com sucesso!");
 

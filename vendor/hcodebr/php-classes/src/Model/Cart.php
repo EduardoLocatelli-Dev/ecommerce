@@ -272,6 +272,31 @@ class Cart extends Model{
         } // para não continuar o script, apenas testar
     }
 
+    Public static function setMsgError($msg)
+    {
+
+        $_SESSION[Cart::SESSION_ERROR] = $msg;
+
+    }
+
+    public static function getMsgError()
+    {
+
+        $msg = (isset($_SESSION[Cart::SESSION_ERROR])) ? $_SESSION[Cart::SESSION_ERROR] : "";
+
+        Cart::clearMsgError();
+
+        return $msg;
+
+    }
+
+    public static function clearMsgError()
+    {
+
+        $_SESSION[Cart::SESSION_ERROR] = NULL;
+
+    }
+
     public function updateFreight()
     {
 
@@ -299,7 +324,7 @@ class Cart extends Model{
 
         $totals = $this->getProductsTotals();
 
-        $this->setsubtotal($totals['vlprice']);
+        $this->setvlsubtotal($totals['vlprice']);
         $this->setvltotal($totals['vlprice'] + $this->getvlfreight());
 
     }
