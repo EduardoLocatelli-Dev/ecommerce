@@ -209,7 +209,7 @@ $app->get("/checkout", function() {
         'address' => $addressData,
 		'error' => Address::getMsgError()
     ]);
-
+	
 });
 
 // POST /checkout → processa envio do formulário
@@ -256,6 +256,8 @@ $app->post("/checkout", function() {
 	$user = User::getFromSession();
 
 	$address = new Address();
+
+	$_POST['denumber'] = $_POST['number'] ?? '';
 
 	$_POST['deszipcode'] =  $_POST['zipcode'];
 	$_POST['idperson'] = $user->getidperson();
