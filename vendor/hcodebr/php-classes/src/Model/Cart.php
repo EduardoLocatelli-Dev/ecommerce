@@ -192,7 +192,7 @@ class Cart extends Model{
             
     }
 
-        public function setFreight($nrzipcode)
+    public function setFreight($nrzipcode)
     {
         $totals = $this->getProductsTotals();
 
